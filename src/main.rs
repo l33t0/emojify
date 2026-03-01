@@ -65,6 +65,9 @@ async fn run(arguments: Arguments, config: Config) -> anyhow::Result<()> {
         Command::Generate(generate_arguments) => handle_generate(generate_arguments, &config).await,
         Command::Upload(upload_arguments) => handle_upload(upload_arguments, &config).await,
         Command::Batch(batch_arguments) => handle_batch(batch_arguments, &config).await,
+        Command::Split(_split_arguments) => {
+            anyhow::bail!("split subcommand is not yet implemented")
+        }
         Command::Tui => handle_tui(&config).await,
     }
 }

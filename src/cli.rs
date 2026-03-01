@@ -30,6 +30,9 @@ pub enum Command {
     /// Batch-generate emoji images from a spec file.
     Batch(BatchArguments),
 
+    /// Split an image into an emoji grid for big-emoji usage.
+    Split(SplitArguments),
+
     /// Launch the interactive terminal UI.
     Tui,
 }
@@ -149,6 +152,83 @@ pub struct BatchArguments {
     /// Emit machine-readable JSON output instead of human-friendly text.
     #[arg(long, default_value_t = false)]
     pub json: bool,
+}
+
+/// Arguments for the `split` subcommand.
+#[derive(Debug, Clone, Parser)]
+pub struct SplitArguments {
+    /// Path to the source image to split into tiles.
+    #[arg()]
+    pub image: PathBuf,
+
+    /// Base name prefix for tile filenames and emoji names.
+    /// Defaults to the input filename stem.
+    #[arg(short, long)]
+    pub name: Option<String>,
+
+    /// Grid dimensions as COLSxROWS (e.g. 5x5, 3x2, 7x4).
+    #[arg(short, long, default_value = "5x5")]
+    pub grid: GridSpec,
+
+    /// Target platform controlling tile size and file size limits.
+    #[arg(short, long, default_value = "slack")]
+    pub platform: Platform,
+
+    /// Directory to write tile images and grid text into.
+    #[arg(short = 'O', long, default_value = "./output")]
+    pub output_dir: PathBuf,
+
+    /// Upload all tiles to the target platform after splitting.
+    #[arg(long, default_value_t = false)]
+    pub upload: bool,
+
+    /// API token for authentication (only used with --upload).
+    #[arg(short, long)]
+    pub token: Option<String>,
+
+    /// Workspace or server identifier (only used with --upload).
+    #[arg(short, long)]
+    pub workspace: Option<String>,
+
+    /// Validate without uploading (only used with --upload).
+    #[arg(long, default_value_t = false)]
+    pub dry_run: bool,
+
+    /// Emit machine-readable JSON output.
+    #[arg(long, default_value_t = false)]
+    pub json: bool,
+}
+
+/// Grid dimensions for the `split` subcommand, parsed from a `COLSxROWS` string.
+#[derive(Debug, Clone, Copy)]
+pub struct GridSpec {
+    /// Number of columns in the grid.
+    pub cols: u32,
+    /// Number of rows in the grid.
+    pub rows: u32,
+}
+
+impl std::str::FromStr for GridSpec {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        let (cols_str, rows_str) = value.split_once('x').ok_or_else(|| {
+            format!("invalid grid format '{value}': expected COLSxROWS (e.g. 5x5)")
+        })?;
+
+        let cols: u32 = cols_str
+            .parse()
+            .map_err(|_| format!("invalid column count '{cols_str}'"))?;
+        let rows: u32 = rows_str
+            .parse()
+            .map_err(|_| format!("invalid row count '{rows_str}'"))?;
+
+        if cols == 0 || rows == 0 {
+            return Err("grid dimensions must be at least 1x1".to_string());
+        }
+
+        Ok(GridSpec { cols, rows })
+    }
 }
 
 /// Anchor position for an overlay on the emoji canvas.
