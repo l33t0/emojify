@@ -3,7 +3,7 @@
 //! Parses command-line arguments, loads configuration, initialises tracing,
 //! and dispatches to the appropriate subcommand handler.
 
-use emojify::cli::{Arguments, Command, GenerateArguments, UploadArguments};
+use emojify::cli::{Arguments, Command, GenerateArguments, SplitArguments, UploadArguments};
 use emojify::config::{Config, SecretString};
 use emojify::error::RenderError;
 use emojify::parse_color;
@@ -65,9 +65,7 @@ async fn run(arguments: Arguments, config: Config) -> anyhow::Result<()> {
         Command::Generate(generate_arguments) => handle_generate(generate_arguments, &config).await,
         Command::Upload(upload_arguments) => handle_upload(upload_arguments, &config).await,
         Command::Batch(batch_arguments) => handle_batch(batch_arguments, &config).await,
-        Command::Split(_split_arguments) => {
-            anyhow::bail!("split subcommand is not yet implemented")
-        }
+        Command::Split(split_arguments) => handle_split(split_arguments, &config).await,
         Command::Tui => handle_tui(&config).await,
     }
 }
@@ -355,6 +353,177 @@ async fn handle_upload(arguments: UploadArguments, config: &Config) -> anyhow::R
 
 /// Resolve the API token from CLI args, config file, or environment.
 fn resolve_token(arguments: &UploadArguments, config: &Config) -> anyhow::Result<String> {
+    if let Some(ref token) = arguments.token {
+        return Ok(token.clone());
+    }
+
+    match arguments.platform {
+        emojify::Platform::Slack => {
+            if let Some(ref secret) = config.slack_token {
+                return Ok(secret.expose().to_owned());
+            }
+            std::env::var("SLACK_TOKEN").context(
+                "no Slack token: pass --token, set SLACK_TOKEN, or add slack_token to config",
+            )
+        }
+        emojify::Platform::Discord => {
+            if let Some(ref secret) = config.discord_token {
+                return Ok(secret.expose().to_owned());
+            }
+            std::env::var("DISCORD_TOKEN").context(
+                "no Discord token: pass --token, set DISCORD_TOKEN, or add discord_token to config",
+            )
+        }
+        _ => bail!("unsupported platform for upload"),
+    }
+}
+
+/// Handle the `split` subcommand: split a source image into a grid of tiles
+/// and optionally upload each tile to a platform.
+async fn handle_split(arguments: SplitArguments, config: &Config) -> anyhow::Result<()> {
+    if !arguments.image.exists() {
+        bail!("image not found: {}", arguments.image.display());
+    }
+
+    let name = arguments.name.clone().unwrap_or_else(|| {
+        arguments
+            .image
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or("emoji")
+            .to_owned()
+    });
+
+    let cols = arguments.grid.cols;
+    let rows = arguments.grid.rows;
+    let platform = arguments.platform;
+    let tile_size = platform.max_dimension();
+
+    info!(
+        %platform,
+        %name,
+        cols,
+        rows,
+        tile_size,
+        "splitting image into emoji grid"
+    );
+
+    let img = image::open(&arguments.image)
+        .with_context(|| format!("failed to open image '{}'", arguments.image.display()))?;
+
+    let tiles = emojify::render::split_image(img, cols, rows, tile_size);
+
+    if !arguments.output_dir.exists() {
+        std::fs::create_dir_all(&arguments.output_dir)
+            .context("failed to create output directory")?;
+    }
+
+    let total = (cols * rows) as usize;
+    let pad = if total >= 100 { 3 } else { 2 };
+
+    let mut tile_paths = Vec::with_capacity(total);
+
+    for (index, tile) in tiles.iter().enumerate() {
+        let encoded = encode_output(tile, OutputFormat::Png, platform)
+            .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?;
+
+        let filename = match pad {
+            3 => format!("{name}{index:03}.png"),
+            _ => format!("{name}{index:02}.png"),
+        };
+
+        let tile_path = arguments.output_dir.join(&filename);
+        std::fs::write(&tile_path, &encoded)
+            .with_context(|| format!("failed to write tile '{}'", tile_path.display()))?;
+
+        tile_paths.push(tile_path);
+    }
+
+    let grid_text = emojify::render::format_emoji_grid(&name, cols, rows);
+    let grid_path = arguments.output_dir.join(format!("{name}_grid.txt"));
+    std::fs::write(&grid_path, &grid_text)
+        .with_context(|| format!("failed to write grid text '{}'", grid_path.display()))?;
+
+    // Upload tiles if requested.
+    if arguments.upload {
+        let token = resolve_split_token(&arguments, config)?;
+        let workspace = arguments.workspace.clone().unwrap_or_default();
+
+        for (index, tile_path) in tile_paths.iter().enumerate() {
+            let emoji_name = match pad {
+                3 => format!("{name}{index:03}"),
+                _ => format!("{name}{index:02}"),
+            };
+
+            if arguments.dry_run {
+                println!(
+                    "Dry run: would upload {} as :{emoji_name}: to {platform}",
+                    tile_path.display(),
+                );
+                continue;
+            }
+
+            let image_data = std::fs::read(tile_path).context("failed to read tile for upload")?;
+
+            match platform {
+                emojify::Platform::Slack => {
+                    let secret = SecretString::new(token.clone());
+                    emojify::upload::upload_to_slack(
+                        &secret,
+                        &workspace,
+                        &emoji_name,
+                        &image_data,
+                        false,
+                    )
+                    .await
+                    .map_err(|upload_error| anyhow::anyhow!(upload_error))?;
+                }
+                emojify::Platform::Discord => {
+                    let secret = SecretString::new(token.clone());
+                    emojify::upload::upload_to_discord(
+                        &secret,
+                        &workspace,
+                        &emoji_name,
+                        &image_data,
+                        false,
+                    )
+                    .await
+                    .map_err(|upload_error| anyhow::anyhow!(upload_error))?;
+                }
+                _ => bail!("unsupported platform for upload"),
+            }
+
+            info!(emoji_name, "uploaded tile");
+        }
+    }
+
+    if arguments.json {
+        let result = serde_json::json!({
+            "status": "ok",
+            "name": name,
+            "platform": platform.to_string(),
+            "cols": cols,
+            "rows": rows,
+            "tiles": total,
+            "output_dir": arguments.output_dir.display().to_string(),
+            "grid_text": grid_text,
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        println!(
+            "Split into {total} tiles in {}",
+            arguments.output_dir.display()
+        );
+        println!("Grid text written to {}", grid_path.display());
+        println!("\n{grid_text}");
+    }
+
+    Ok(())
+}
+
+/// Resolve the API token for the split subcommand from CLI args, config file,
+/// or environment.
+fn resolve_split_token(arguments: &SplitArguments, config: &Config) -> anyhow::Result<String> {
     if let Some(ref token) = arguments.token {
         return Ok(token.clone());
     }
