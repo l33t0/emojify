@@ -1,13 +1,38 @@
 # emojify
 
-Generate platform-compatible custom emoji images from text, images, or stdin with compositing support.
+Split images into emoji grids for Slack and Discord big-emoji, generate custom emoji from text or images, and upload them directly.
 
 [![CI](https://github.com/l33t0/emojify/actions/workflows/ci.yml/badge.svg)](https://github.com/l33t0/emojify/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/emojify.svg)](https://crates.io/crates/emojify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+## Big Emoji
+
+Split any image into a grid of emoji-sized tiles that combine into a large image when pasted into Slack or Discord:
+
+```sh
+emojify split photo.jpg --name cats --grid 5x5
+```
+
+This produces 25 tile images (`cats00.png` through `cats24.png`) and a grid text file you can paste directly into chat:
+
+```
+:cats00::cats01::cats02::cats03::cats04:
+:cats05::cats06::cats07::cats08::cats09:
+:cats10::cats11::cats12::cats13::cats14:
+:cats15::cats16::cats17::cats18::cats19:
+:cats20::cats21::cats22::cats23::cats24:
+```
+
+Upload all tiles in one command:
+
+```sh
+emojify split photo.jpg --name cats --grid 5x5 --upload --platform slack --token "$SLACK_TOKEN" --workspace myteam
+```
+
 ## Features
 
+- **Image splitting** — split any image into an NxM grid of emoji tiles for big-emoji compositions
 - Render text to emoji-sized images with automatic font scaling and multi-line support
 - Load and resize existing images to platform-compliant dimensions
 - Overlay compositing with configurable anchor positions (corners, edges, center)
@@ -51,22 +76,28 @@ cargo build --release
 
 ## Quick Start
 
+Split an image into a 5x5 emoji grid:
+
+```sh
+emojify split photo.jpg --name hype --grid 5x5
+```
+
 Generate a text emoji for Slack (default):
 
 ```sh
-emojify generate "LFG" -O lfg.png
+emojify generate "LFG" -O output/lfg.png
 ```
 
 Generate for Discord with custom colours:
 
 ```sh
-emojify generate "GG" --platform discord --foreground "#00FF00" --background "#1a1a1a" -O gg.png
+emojify generate "GG" --platform discord --foreground "#00FF00" --background "#1a1a1a" -O output/gg.png
 ```
 
 Upload to Slack (dry run):
 
 ```sh
-emojify upload lfg.png --platform slack --name lfg --dry-run --token "$SLACK_TOKEN" --workspace myteam
+emojify upload output/lfg.png --platform slack --name lfg --dry-run --token "$SLACK_TOKEN" --workspace myteam
 ```
 
 Batch generate from a spec file:
@@ -125,6 +156,26 @@ emojify upload <FILE> [OPTIONS]
 | `--token <TOKEN>` | `-t` | env var | API token (`SLACK_TOKEN` or `DISCORD_TOKEN`) |
 | `--workspace <ID>` | `-w` | | Workspace (Slack) or guild ID (Discord) |
 | `--dry-run` | | `false` | Validate without uploading |
+
+### `emojify split`
+
+Split an image into a grid of emoji-sized tiles for big-emoji usage.
+
+```
+emojify split <IMAGE> [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--name <PREFIX>` | `-n` | filename stem | Base name prefix for tiles and emoji names |
+| `--grid <COLSxROWS>` | `-g` | `5x5` | Grid dimensions (e.g. `5x5`, `3x2`, `7x4`) |
+| `--platform <PLATFORM>` | `-p` | `slack` | Target platform: `slack` or `discord` |
+| `--output-dir <DIR>` | `-O` | `./output` | Directory for tile images and grid text |
+| `--upload` | | `false` | Upload all tiles after splitting |
+| `--token <TOKEN>` | `-t` | env var | API token (only with `--upload`) |
+| `--workspace <ID>` | `-w` | | Workspace or guild ID (only with `--upload`) |
+| `--dry-run` | | `false` | Validate without uploading |
+| `--json` | | `false` | Emit machine-readable JSON output |
 
 ### `emojify batch`
 
@@ -219,7 +270,7 @@ cargo clippy -- -D warnings
 3. Make your changes and add tests
 4. Ensure `cargo fmt`, `cargo clippy -- -D warnings`, and `cargo nextest run` all pass
 5. Commit with a descriptive message using conventional commit format
-6. Open a pull request against `main`
+6. Open a pull request against `master`
 
 ## License
 
