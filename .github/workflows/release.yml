@@ -161,3 +161,82 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+
+  update-formula:
+    name: Update Homebrew Formula
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Read checksums and update formula
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          SHA_AARCH64_DARWIN=$(awk '{print $1}' artifacts/emojify-aarch64-apple-darwin.tar.gz.sha256)
+          SHA_X86_64_DARWIN=$(awk '{print $1}' artifacts/emojify-x86_64-apple-darwin.tar.gz.sha256)
+          SHA_AARCH64_LINUX=$(awk '{print $1}' artifacts/emojify-aarch64-unknown-linux-gnu.tar.gz.sha256)
+          SHA_X86_64_LINUX=$(awk '{print $1}' artifacts/emojify-x86_64-unknown-linux-gnu.tar.gz.sha256)
+
+          cat > Formula/l33t0-emojify.rb <<RUBY
+          class L33t0Emojify < Formula
+            desc "Generate platform-compatible custom emoji images"
+            homepage "https://github.com/l33t0/emojify"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/l33t0/emojify/releases/download/v#{version}/emojify-aarch64-apple-darwin.tar.gz"
+                sha256 "${SHA_AARCH64_DARWIN}"
+              end
+              on_intel do
+                url "https://github.com/l33t0/emojify/releases/download/v#{version}/emojify-x86_64-apple-darwin.tar.gz"
+                sha256 "${SHA_X86_64_DARWIN}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/l33t0/emojify/releases/download/v#{version}/emojify-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA_AARCH64_LINUX}"
+              end
+              on_intel do
+                url "https://github.com/l33t0/emojify/releases/download/v#{version}/emojify-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA_X86_64_LINUX}"
+              end
+            end
+
+            def install
+              bin.install "emojify"
+            end
+
+            test do
+              system bin/"emojify", "--version"
+            end
+          end
+          RUBY
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' Formula/l33t0-emojify.rb
+
+      - name: Commit and push formula update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/l33t0-emojify.rb
+          git commit -m "chore: update Homebrew formula for v${{ steps.version.outputs.VERSION }}"
+          git push origin master
