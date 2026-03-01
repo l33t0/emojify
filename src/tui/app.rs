@@ -310,7 +310,7 @@ fn image_to_block_art(image: &RgbaImage, max_columns: u16, max_rows: u16) -> Vec
     let display_height = ((image.height() as f64 * scale).round() as u32).max(1);
 
     // Ensure the display height is even for half-block pairing.
-    let display_height = if display_height % 2 != 0 {
+    let display_height = if !display_height.is_multiple_of(2) {
         display_height + 1
     } else {
         display_height

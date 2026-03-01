@@ -2,7 +2,7 @@
 name = "l33t0-emojify"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.93.1"
 description = "Generate platform-compatible custom emoji images from text, images, or stdin"
 authors = ["Stefan Obradovic <me@l33t0.dev>"]
 license = "MIT"

@@ -241,7 +241,7 @@ The config file is checked for world-readable permissions on Unix systems. A war
 ## Building from Source
 
 Requirements:
-- Rust 1.85.0 or later (MSRV)
+- Rust 1.93.1 or later (MSRV)
 - A C linker (provided by your system toolchain)
 
 ```sh

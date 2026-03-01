@@ -252,10 +252,10 @@ async fn handle_generate(arguments: GenerateArguments, config: &Config) -> anyho
             .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?
     };
 
-    if let Some(parent) = arguments.output.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).context("failed to create output directory")?;
-        }
+    if let Some(parent) = arguments.output.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).context("failed to create output directory")?;
     }
 
     std::fs::write(&arguments.output, &encoded).context("failed to write output file")?;
@@ -675,10 +675,10 @@ fn render_and_write(arguments: &GenerateArguments, config: &Config) -> anyhow::R
     let encoded = encode_output(&image, output_format, arguments.platform)
         .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?;
 
-    if let Some(parent) = arguments.output.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).context("failed to create output directory")?;
-        }
+    if let Some(parent) = arguments.output.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).context("failed to create output directory")?;
     }
 
     let byte_count = encoded.len();
