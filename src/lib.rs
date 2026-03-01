@@ -1,9 +1,8 @@
-//! Emojify: generate platform-compatible custom emoji images from text, images,
-//! or stdin.
+//! Generate platform-compatible custom emoji images from text, images, or stdin.
 //!
-//! This crate provides the core library for the `emojify` CLI tool, including
-//! text rendering, image compositing, platform-specific constraints, and upload
-//! support for Slack and Discord.
+//! This crate (`l33t0-emojify`) provides the core library for the `emojify` CLI
+//! tool, including text rendering, image compositing, platform-specific
+//! constraints, and upload support for Slack and Discord.
 
 pub mod cli;
 pub mod config;

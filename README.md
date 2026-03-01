@@ -3,7 +3,7 @@
 Split images into emoji grids for Slack and Discord big-emoji, generate custom emoji from text or images, and upload them directly.
 
 [![CI](https://github.com/l33t0/emojify/actions/workflows/ci.yml/badge.svg)](https://github.com/l33t0/emojify/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/emojify.svg)](https://crates.io/crates/emojify)
+[![Crates.io](https://img.shields.io/crates/v/l33t0-emojify.svg)](https://crates.io/crates/l33t0-emojify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Big Emoji
@@ -49,14 +49,14 @@ emojify split photo.jpg --name cats --grid 5x5 --upload --platform slack --token
 ### Cargo
 
 ```sh
-cargo install emojify
+cargo install l33t0-emojify
 ```
 
 ### Homebrew
 
 ```sh
-brew tap l33t0/emojify
-brew install emojify
+brew tap l33t0/emojify https://github.com/l33t0/emojify
+brew install l33t0-emojify
 ```
 
 ### Docker

@@ -4,13 +4,13 @@
 //! gradient generation, and animated GIF output to verify correctness of the
 //! core render module.
 
-use emojify::platform::{OutputFormat, Platform};
-use emojify::render::{
+use image::Rgba;
+use l33t0_emojify::platform::{OutputFormat, Platform};
+use l33t0_emojify::render::{
     Anchor, GifOptions, GradientSpec, OverlaySpec, TextRenderOptions, composite,
     encode_animated_gif, encode_output, format_emoji_grid, generate_gradient,
     generate_pulse_animation, render_text, split_image,
 };
-use image::Rgba;
 
 /// Helper to build a basic [`TextRenderOptions`] with sensible defaults for a
 /// 128x128 canvas targeting Slack.

@@ -1,5 +1,5 @@
 [package]
-name = "emojify"
+name = "l33t0-emojify"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
@@ -7,6 +7,10 @@ description = "Generate platform-compatible custom emoji images from text, image
 authors = ["Stefan Obradovic <me@l33t0.dev>"]
 license = "MIT"
 repository = "https://github.com/l33t0/emojify"
+
+[[bin]]
+name = "emojify"
+path = "src/main.rs"
 
 [dependencies]
 ab_glyph = "0.2"

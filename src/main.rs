@@ -3,12 +3,12 @@
 //! Parses command-line arguments, loads configuration, initialises tracing,
 //! and dispatches to the appropriate subcommand handler.
 
-use emojify::cli::{Arguments, Command, GenerateArguments, SplitArguments, UploadArguments};
-use emojify::config::{Config, SecretString};
-use emojify::error::RenderError;
-use emojify::parse_color;
-use emojify::platform::OutputFormat;
-use emojify::render::{
+use l33t0_emojify::cli::{Arguments, Command, GenerateArguments, SplitArguments, UploadArguments};
+use l33t0_emojify::config::{Config, SecretString};
+use l33t0_emojify::error::RenderError;
+use l33t0_emojify::parse_color;
+use l33t0_emojify::platform::OutputFormat;
+use l33t0_emojify::render::{
     TextRenderOptions, encode_output, load_and_resize_image, load_image_from_bytes, render_text,
 };
 
@@ -141,9 +141,9 @@ fn render_image(
 
 /// Load overlay images from CLI overlay arguments and convert them to render specs.
 fn load_overlay_specs(
-    overlays: &[emojify::cli::OverlayArg],
+    overlays: &[l33t0_emojify::cli::OverlayArg],
     canvas_width: u32,
-) -> anyhow::Result<Vec<emojify::render::OverlaySpec>> {
+) -> anyhow::Result<Vec<l33t0_emojify::render::OverlaySpec>> {
     let _ = canvas_width; // Reserved for future scaling logic.
     let mut specs = Vec::with_capacity(overlays.len());
 
@@ -168,19 +168,27 @@ fn load_overlay_specs(
         };
 
         let anchor = match overlay_arg.anchor {
-            emojify::cli::OverlayAnchor::TopLeft => emojify::render::Anchor::TopLeft,
-            emojify::cli::OverlayAnchor::TopRight => emojify::render::Anchor::TopRight,
-            emojify::cli::OverlayAnchor::TopCenter => emojify::render::Anchor::TopCenter,
-            emojify::cli::OverlayAnchor::BottomLeft => emojify::render::Anchor::BottomLeft,
-            emojify::cli::OverlayAnchor::BottomRight => emojify::render::Anchor::BottomRight,
-            emojify::cli::OverlayAnchor::BottomCenter => emojify::render::Anchor::BottomCenter,
-            emojify::cli::OverlayAnchor::Center => emojify::render::Anchor::Center,
+            l33t0_emojify::cli::OverlayAnchor::TopLeft => l33t0_emojify::render::Anchor::TopLeft,
+            l33t0_emojify::cli::OverlayAnchor::TopRight => l33t0_emojify::render::Anchor::TopRight,
+            l33t0_emojify::cli::OverlayAnchor::TopCenter => {
+                l33t0_emojify::render::Anchor::TopCenter
+            }
+            l33t0_emojify::cli::OverlayAnchor::BottomLeft => {
+                l33t0_emojify::render::Anchor::BottomLeft
+            }
+            l33t0_emojify::cli::OverlayAnchor::BottomRight => {
+                l33t0_emojify::render::Anchor::BottomRight
+            }
+            l33t0_emojify::cli::OverlayAnchor::BottomCenter => {
+                l33t0_emojify::render::Anchor::BottomCenter
+            }
+            l33t0_emojify::cli::OverlayAnchor::Center => l33t0_emojify::render::Anchor::Center,
         };
 
-        specs.push(emojify::render::OverlaySpec {
+        specs.push(l33t0_emojify::render::OverlaySpec {
             image: overlay_image,
             anchor,
-            scale: emojify::render::OverlaySpec::DEFAULT_SCALE,
+            scale: l33t0_emojify::render::OverlaySpec::DEFAULT_SCALE,
         });
     }
 
@@ -217,26 +225,27 @@ async fn handle_generate(arguments: GenerateArguments, config: &Config) -> anyho
     // Apply gradient if specified.
     if let Some(ref gradient_spec) = arguments.gradient {
         // Only applies to text rendering (gradient masks onto text alpha).
-        let spec = emojify::render::GradientSpec::parse(gradient_spec)
+        let spec = l33t0_emojify::render::GradientSpec::parse(gradient_spec)
             .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?;
-        let gradient_img = emojify::render::generate_gradient(&spec, image.width(), image.height());
-        image = emojify::render::apply_gradient_to_text(&image, &gradient_img);
+        let gradient_img =
+            l33t0_emojify::render::generate_gradient(&spec, image.width(), image.height());
+        image = l33t0_emojify::render::apply_gradient_to_text(&image, &gradient_img);
     }
 
     // Apply overlays if specified.
     if !arguments.overlay.is_empty() {
         let overlay_specs = load_overlay_specs(&arguments.overlay, image.width())?;
-        emojify::render::composite(&mut image, &overlay_specs)
+        l33t0_emojify::render::composite(&mut image, &overlay_specs)
             .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?;
     }
 
     // Handle animated output.
     let encoded = if arguments.animated {
-        let gif_options = emojify::render::GifOptions {
+        let gif_options = l33t0_emojify::render::GifOptions {
             frame_delay_ms: 200,
             canvas_size: image.width().max(image.height()),
         };
-        emojify::render::generate_pulse_animation(&image, &gif_options)
+        l33t0_emojify::render::generate_pulse_animation(&image, &gif_options)
             .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?
     } else {
         encode_output(&image, output_format, platform)
@@ -319,9 +328,9 @@ async fn handle_upload(arguments: UploadArguments, config: &Config) -> anyhow::R
     let workspace = arguments.workspace.clone().unwrap_or_default();
 
     match arguments.platform {
-        emojify::Platform::Slack => {
+        l33t0_emojify::Platform::Slack => {
             let secret = SecretString::new(token);
-            emojify::upload::upload_to_slack(
+            l33t0_emojify::upload::upload_to_slack(
                 &secret,
                 &workspace,
                 &arguments.name,
@@ -331,9 +340,9 @@ async fn handle_upload(arguments: UploadArguments, config: &Config) -> anyhow::R
             .await
             .map_err(|upload_error| anyhow::anyhow!(upload_error))?;
         }
-        emojify::Platform::Discord => {
+        l33t0_emojify::Platform::Discord => {
             let secret = SecretString::new(token);
-            emojify::upload::upload_to_discord(
+            l33t0_emojify::upload::upload_to_discord(
                 &secret,
                 &workspace,
                 &arguments.name,
@@ -358,7 +367,7 @@ fn resolve_token(arguments: &UploadArguments, config: &Config) -> anyhow::Result
     }
 
     match arguments.platform {
-        emojify::Platform::Slack => {
+        l33t0_emojify::Platform::Slack => {
             if let Some(ref secret) = config.slack_token {
                 return Ok(secret.expose().to_owned());
             }
@@ -366,7 +375,7 @@ fn resolve_token(arguments: &UploadArguments, config: &Config) -> anyhow::Result
                 "no Slack token: pass --token, set SLACK_TOKEN, or add slack_token to config",
             )
         }
-        emojify::Platform::Discord => {
+        l33t0_emojify::Platform::Discord => {
             if let Some(ref secret) = config.discord_token {
                 return Ok(secret.expose().to_owned());
             }
@@ -411,7 +420,7 @@ async fn handle_split(arguments: SplitArguments, config: &Config) -> anyhow::Res
     let img = image::open(&arguments.image)
         .with_context(|| format!("failed to open image '{}'", arguments.image.display()))?;
 
-    let tiles = emojify::render::split_image(img, cols, rows, tile_size);
+    let tiles = l33t0_emojify::render::split_image(img, cols, rows, tile_size);
 
     if !arguments.output_dir.exists() {
         std::fs::create_dir_all(&arguments.output_dir)
@@ -439,7 +448,7 @@ async fn handle_split(arguments: SplitArguments, config: &Config) -> anyhow::Res
         tile_paths.push(tile_path);
     }
 
-    let grid_text = emojify::render::format_emoji_grid(&name, cols, rows);
+    let grid_text = l33t0_emojify::render::format_emoji_grid(&name, cols, rows);
     let grid_path = arguments.output_dir.join(format!("{name}_grid.txt"));
     std::fs::write(&grid_path, &grid_text)
         .with_context(|| format!("failed to write grid text '{}'", grid_path.display()))?;
@@ -466,9 +475,9 @@ async fn handle_split(arguments: SplitArguments, config: &Config) -> anyhow::Res
             let image_data = std::fs::read(tile_path).context("failed to read tile for upload")?;
 
             match platform {
-                emojify::Platform::Slack => {
+                l33t0_emojify::Platform::Slack => {
                     let secret = SecretString::new(token.clone());
-                    emojify::upload::upload_to_slack(
+                    l33t0_emojify::upload::upload_to_slack(
                         &secret,
                         &workspace,
                         &emoji_name,
@@ -478,9 +487,9 @@ async fn handle_split(arguments: SplitArguments, config: &Config) -> anyhow::Res
                     .await
                     .map_err(|upload_error| anyhow::anyhow!(upload_error))?;
                 }
-                emojify::Platform::Discord => {
+                l33t0_emojify::Platform::Discord => {
                     let secret = SecretString::new(token.clone());
-                    emojify::upload::upload_to_discord(
+                    l33t0_emojify::upload::upload_to_discord(
                         &secret,
                         &workspace,
                         &emoji_name,
@@ -529,7 +538,7 @@ fn resolve_split_token(arguments: &SplitArguments, config: &Config) -> anyhow::R
     }
 
     match arguments.platform {
-        emojify::Platform::Slack => {
+        l33t0_emojify::Platform::Slack => {
             if let Some(ref secret) = config.slack_token {
                 return Ok(secret.expose().to_owned());
             }
@@ -537,7 +546,7 @@ fn resolve_split_token(arguments: &SplitArguments, config: &Config) -> anyhow::R
                 "no Slack token: pass --token, set SLACK_TOKEN, or add slack_token to config",
             )
         }
-        emojify::Platform::Discord => {
+        l33t0_emojify::Platform::Discord => {
             if let Some(ref secret) = config.discord_token {
                 return Ok(secret.expose().to_owned());
             }
@@ -551,7 +560,7 @@ fn resolve_split_token(arguments: &SplitArguments, config: &Config) -> anyhow::R
 
 /// Handle the `batch` subcommand: read a spec file and generate each emoji.
 async fn handle_batch(
-    arguments: emojify::cli::BatchArguments,
+    arguments: l33t0_emojify::cli::BatchArguments,
     config: &Config,
 ) -> anyhow::Result<()> {
     if !arguments.spec_file.exists() {
@@ -656,10 +665,11 @@ fn render_and_write(arguments: &GenerateArguments, config: &Config) -> anyhow::R
     let mut image = render_image(arguments, config)?;
 
     if let Some(ref gradient_spec) = arguments.gradient {
-        let spec = emojify::render::GradientSpec::parse(gradient_spec)
+        let spec = l33t0_emojify::render::GradientSpec::parse(gradient_spec)
             .map_err(|render_error: RenderError| anyhow::anyhow!(render_error))?;
-        let gradient_img = emojify::render::generate_gradient(&spec, image.width(), image.height());
-        image = emojify::render::apply_gradient_to_text(&image, &gradient_img);
+        let gradient_img =
+            l33t0_emojify::render::generate_gradient(&spec, image.width(), image.height());
+        image = l33t0_emojify::render::apply_gradient_to_text(&image, &gradient_img);
     }
 
     let encoded = encode_output(&image, output_format, arguments.platform)
@@ -680,7 +690,7 @@ fn render_and_write(arguments: &GenerateArguments, config: &Config) -> anyhow::R
 async fn handle_tui(config: &Config) -> anyhow::Result<()> {
     info!("launching TUI");
 
-    emojify::tui::run_tui(config)
+    l33t0_emojify::tui::run_tui(config)
         .await
         .context("TUI exited with error")?;
 

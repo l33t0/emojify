@@ -542,31 +542,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
-name = "emojify"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "anyhow",
- "assert_cmd",
- "base64",
- "clap",
- "crossterm",
- "dirs",
- "image",
- "predicates",
- "ratatui",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "equator"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1178,6 +1153,31 @@ checksum = "14dc6f6450b3f6d4ed5b16327f38fed626d375a886159ca555bd7822c0c3a5a6"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "l33t0-emojify"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "anyhow",
+ "assert_cmd",
+ "base64",
+ "clap",
+ "crossterm",
+ "dirs",
+ "image",
+ "predicates",
+ "ratatui",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
