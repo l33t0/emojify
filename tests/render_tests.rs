@@ -7,7 +7,8 @@
 use emojify::platform::{OutputFormat, Platform};
 use emojify::render::{
     Anchor, GifOptions, GradientSpec, OverlaySpec, TextRenderOptions, composite,
-    encode_animated_gif, encode_output, generate_gradient, generate_pulse_animation, render_text,
+    encode_animated_gif, encode_output, format_emoji_grid, generate_gradient,
+    generate_pulse_animation, render_text, split_image,
 };
 use image::Rgba;
 
@@ -184,6 +185,57 @@ fn test_pulse_animation_gif() {
     // GIF magic bytes: "GIF89a" or "GIF87a"
     assert!(gif_data.len() >= 6, "GIF output too short");
     assert_eq!(&gif_data[0..3], b"GIF");
+}
+
+// ---------------------------------------------------------------------------
+// Split-image and emoji-grid tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_split_image_produces_correct_tile_count() {
+    let img = image::DynamicImage::new_rgba8(500, 500);
+    let tiles = split_image(img, 5, 5, 128);
+    assert_eq!(tiles.len(), 25);
+}
+
+#[test]
+fn test_split_image_tile_dimensions() {
+    let img = image::DynamicImage::new_rgba8(500, 500);
+    let tiles = split_image(img, 3, 2, 128);
+    assert_eq!(tiles.len(), 6);
+    for tile in &tiles {
+        assert_eq!(tile.width(), 128);
+        assert_eq!(tile.height(), 128);
+    }
+}
+
+#[test]
+fn test_split_image_non_square_grid() {
+    let img = image::DynamicImage::new_rgba8(800, 200);
+    let tiles = split_image(img, 7, 2, 128);
+    assert_eq!(tiles.len(), 14);
+    for tile in &tiles {
+        assert_eq!(tile.width(), 128);
+        assert_eq!(tile.height(), 128);
+    }
+}
+
+#[test]
+fn test_format_emoji_grid_5x5() {
+    let grid = format_emoji_grid("cats", 5, 5);
+    let lines: Vec<&str> = grid.lines().collect();
+    assert_eq!(lines.len(), 5);
+    assert_eq!(lines[0], ":cats00::cats01::cats02::cats03::cats04:");
+    assert_eq!(lines[4], ":cats20::cats21::cats22::cats23::cats24:");
+}
+
+#[test]
+fn test_format_emoji_grid_3x2() {
+    let grid = format_emoji_grid("dog", 3, 2);
+    let lines: Vec<&str> = grid.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[0], ":dog00::dog01::dog02:");
+    assert_eq!(lines[1], ":dog03::dog04::dog05:");
 }
 
 // ---------------------------------------------------------------------------
