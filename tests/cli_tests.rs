@@ -217,3 +217,101 @@ fn test_batch_missing_spec_fails() {
         .failure()
         .stderr(predicate::str::contains("not found").or(predicate::str::contains("Error")));
 }
+
+// ---------------------------------------------------------------------------
+// Split subcommand tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_split_basic() {
+    let tmp = TempDir::new().unwrap();
+    let input = tmp.path().join("source.png");
+    let output_dir = tmp.path().join("tiles");
+
+    // Generate a source image first.
+    emojify()
+        .args([
+            "generate",
+            "BIG",
+            "--background",
+            "#FF0000",
+            "-O",
+            input.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    emojify()
+        .args([
+            "split",
+            input.to_str().unwrap(),
+            "--name",
+            "test",
+            "--grid",
+            "3x2",
+            "-O",
+            output_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(":test00:"))
+        .stdout(predicate::str::contains("6 tiles"));
+
+    assert!(output_dir.join("test00.png").exists());
+    assert!(output_dir.join("test05.png").exists());
+    assert!(output_dir.join("test_grid.txt").exists());
+}
+
+#[test]
+fn test_split_defaults_name_from_filename() {
+    let tmp = TempDir::new().unwrap();
+    let input = tmp.path().join("cats.png");
+    let output_dir = tmp.path().join("out");
+
+    // Generate an image named "cats.png".
+    emojify()
+        .args(["generate", "meow", "-O", input.to_str().unwrap()])
+        .assert()
+        .success();
+
+    emojify()
+        .args([
+            "split",
+            input.to_str().unwrap(),
+            "--grid",
+            "2x2",
+            "-O",
+            output_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(":cats00:"));
+
+    assert!(output_dir.join("cats00.png").exists());
+}
+
+#[test]
+fn test_split_missing_image_fails() {
+    emojify()
+        .args(["split", "/nonexistent/image.png", "--grid", "2x2"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not found").or(predicate::str::contains("Error")));
+}
+
+#[test]
+fn test_split_invalid_grid_fails() {
+    let tmp = TempDir::new().unwrap();
+    let input = tmp.path().join("source.png");
+
+    // Generate a source image.
+    emojify()
+        .args(["generate", "X", "-O", input.to_str().unwrap()])
+        .assert()
+        .success();
+
+    emojify()
+        .args(["split", input.to_str().unwrap(), "--grid", "bad"])
+        .assert()
+        .failure();
+}
